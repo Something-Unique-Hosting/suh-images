@@ -19,6 +19,11 @@ Entrypoint changes compared to upstream:
   appended to that file. `strftime` tokens are allowed, e.g.
   `logs/valheim-%Y-%m-%d_%H%M%S.log`. Empty or unset means console only, and the
   game is `exec`ed directly as before.
+- Optional `LOG_KEEP` environment variable (default `10`, `0` = keep everything).
+  Number of log files kept, including the one being written. With a timestamped
+  `LOG_FILE` the oldest matching files are deleted at boot. With a static
+  `LOG_FILE` the file is shifted to `.1`, `.2`, ... at boot. Rotation happens on
+  start only, not while the server runs.
 
 The egg startup command stays the stock one. Do not add `-logfile`; it makes the
 game write to the file instead of the console.

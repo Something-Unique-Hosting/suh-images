@@ -50,8 +50,32 @@ fi
 
 # Logfile requested: console + file via tee, stop signal forwarded to the game.
 # LOG_FILE may contain strftime tokens, e.g. logs/valheim-%Y-%m-%d_%H%M%S.log
-LOG_PATH="$(date +"${LOG_FILE}")"
-mkdir -p "$(dirname "${LOG_PATH}")"
+# LOG_KEEP = number of log files to keep including the new one (default 10, 0 = keep all).
+LOG_KEEP="${LOG_KEEP:-10}"
+[[ "${LOG_KEEP}" =~ ^[0-9]+$ ]] || LOG_KEEP=10
+
+if [[ "${LOG_FILE}" == *%* ]]; then
+    # timestamped name: new file per boot, prune the oldest matching files
+    LOG_PATH="$(date +"${LOG_FILE}")"
+    mkdir -p "$(dirname "${LOG_PATH}")"
+    if [ "${LOG_KEEP}" -gt 0 ]; then
+        LOG_GLOB="$(printf '%s' "${LOG_FILE}" | sed -E 's/%[A-Za-z%]/*/g; s/\*+/*/g')"
+        ls -1t -- ${LOG_GLOB} 2>/dev/null | tail -n +"${LOG_KEEP}" | while IFS= read -r old; do
+            rm -f -- "${old}"
+        done
+    fi
+else
+    # static name: rotate file -> file.1 -> file.2 ... up to LOG_KEEP-1
+    LOG_PATH="${LOG_FILE}"
+    mkdir -p "$(dirname "${LOG_PATH}")"
+    if [ "${LOG_KEEP}" -gt 0 ]; then
+        for ((i = LOG_KEEP - 1; i >= 1; i--)); do
+            [ -e "${LOG_PATH}.${i}" ] && mv -f -- "${LOG_PATH}.${i}" "${LOG_PATH}.$((i + 1))"
+        done
+        [ -e "${LOG_PATH}" ] && mv -f -- "${LOG_PATH}" "${LOG_PATH}.1"
+        rm -f -- "${LOG_PATH}.${LOG_KEEP}"
+    fi
+fi
 FIFO="$(mktemp -u /tmp/console.XXXXXX)"
 mkfifo "${FIFO}"
 
