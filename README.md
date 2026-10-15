@@ -27,3 +27,28 @@ Entrypoint changes compared to upstream:
 
 The egg startup command stays the stock one. Do not add `-logfile`; it makes the
 game write to the file instead of the console.
+
+## steamcmd/proton
+
+`ghcr.io/something-unique-hosting/steamcmd:proton`
+
+Drop-in replacement for `ghcr.io/ptero-eggs/steamcmd:proton`: same paths
+(`/usr/local/bin/proton`), user, packages and entrypoint (copied unchanged from
+Ptero-Eggs/yolks). Differences:
+
+- GE-Proton, winetricks, protontricks and rcon versions are pinned in the
+  Dockerfile, and the GE-Proton tarball is checked against its sha512. Upstream
+  takes "latest at build time". Its scheduled builds were disabled by GitHub
+  for inactivity on 2026-06-22, which left it on GE-Proton10-34.
+- Debian trixie base (GE-Proton 11 needs glibc >= 2.38), plus `libvulkan1`
+  (the GE-Proton 11 launcher loads it at startup).
+- CI fails the build if Proton's `lsteamclient` does not expose
+  `SteamUtils011`.
+- `bump-proton.yml` checks daily for a new GE-Proton release and opens a PR
+  with the new version and checksum. Repo settings must allow GitHub Actions to
+  create pull requests.
+
+Switching an existing server from a GE-Proton 10 image: delete
+`.steam/steam/steamapps/compatdata/<appid>/` (the Wine prefix, no saves in
+it). An old prefix makes the game hang at start on Proton 11; a fresh one is
+created on the next start.
