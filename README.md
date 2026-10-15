@@ -42,6 +42,11 @@ Ptero-Eggs/yolks). Differences:
   for inactivity on 2026-06-22, which left it on GE-Proton10-34.
 - Debian trixie base (GE-Proton 11 needs glibc >= 2.38), plus `libvulkan1`
   (the GE-Proton 11 launcher loads it at startup).
+- The entrypoint starts `Xvfb :99` and sets `DISPLAY` when Proton is present
+  and no display is set. Without it GE-Proton 11 hangs at startup: Wine's
+  `explorer.exe /desktop` never comes up and the game blocks on it (0 of 4
+  starts under wings' container settings, 4 of 4 with Xvfb). This is the only
+  change to the upstream entrypoint.
 - CI fails the build if Proton's `lsteamclient` does not expose
   `SteamUtils011`.
 - `bump-proton.yml` checks daily for a new GE-Proton release and opens a PR

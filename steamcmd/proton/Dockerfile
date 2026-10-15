@@ -57,7 +57,7 @@ WORKDIR /home/container
 
 STOPSIGNAL SIGINT
 
-# Upstream Ptero-Eggs/yolks steamcmd/entrypoint.sh, unchanged
+# Upstream Ptero-Eggs/yolks steamcmd/entrypoint.sh plus an Xvfb display for Proton
 COPY --chown=container:container --chmod=755 entrypoint.sh /entrypoint.sh
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
 CMD ["/entrypoint.sh"]
