@@ -68,6 +68,13 @@ if [ -z "${AUTO_UPDATE}" ] || [ "${AUTO_UPDATE}" == "1" ]; then
 	fi
 fi
 
+# SUH: GE-Proton 11 hangs at startup without an X display (explorer.exe
+# /desktop never comes up and the game blocks on it), so give it a virtual one.
+if [ -f "/usr/local/bin/proton" ] && [ -z "${DISPLAY}" ]; then
+	Xvfb :99 -screen 0 1024x768x16 -nolisten tcp >/dev/null 2>&1 &
+	export DISPLAY=:99
+fi
+
 # Replace Startup Variables
 MODIFIED_STARTUP=$(echo ${STARTUP} | sed -e 's/{{/${/g' -e 's/}}/}/g')
 echo -e ":/home/container$ ${MODIFIED_STARTUP}"
