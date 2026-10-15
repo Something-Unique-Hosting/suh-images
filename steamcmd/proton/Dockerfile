@@ -1,3 +1,9 @@
+# Yield shim (see yieldshim.c), built separately so the image carries no compiler
+FROM debian:trixie-slim AS yieldshim
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev && rm -rf /var/lib/apt/lists/*
+COPY yieldshim.c /src/yieldshim.c
+RUN gcc -shared -fPIC -O2 -Wall -o /src/yieldshim.so /src/yieldshim.c
+
 FROM debian:trixie-slim
 
 # Drop-in replacement for ghcr.io/ptero-eggs/steamcmd:proton (same paths, user
@@ -50,6 +56,8 @@ RUN curl -fsSL "https://github.com/gorcon/rcon-cli/releases/download/v${RCON_VER
         | tar -xz -C /tmp \
     && mv "/tmp/rcon-${RCON_VERSION}-amd64_linux/rcon" /usr/local/bin/ \
     && rm -rf "/tmp/rcon-${RCON_VERSION}-amd64_linux"
+
+COPY --from=yieldshim /src/yieldshim.so /usr/local/lib/suh/yieldshim.so
 
 USER container
 ENV USER=container HOME=/home/container

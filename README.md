@@ -57,3 +57,24 @@ Switching an existing server from a GE-Proton 10 image: delete
 `.steam/steam/steamapps/compatdata/<appid>/` (the Wine prefix, no saves in
 it). An old prefix makes the game hang at start on Proton 11; a fresh one is
 created on the next start.
+
+### Yield shim (`SUH_YIELD_SLEEP_US`)
+
+Optional, off by default. When `SUH_YIELD_SLEEP_US` is set to a number of
+microseconds, the entrypoint preloads `/usr/local/lib/suh/yieldshim.so` for the
+game, which turns `sched_yield()` into a sleep of that length.
+
+Why: Enshrouded's server runs a ~60 Hz job graph even with nobody connected
+(~2,200 jobs/s). Every job handoff ends in a yield (`SwitchToThread`/`Sleep(0)`
+and Wine's own wait path all reach `NtYieldExecution` -> `sched_yield`). Under
+Wine those yields return immediately, so the threads spin. Measured on ny2
+under wings' container settings: idle CPU 31.4% of a core without the shim,
+9.2% with `SUH_YIELD_SLEEP_US=250`.
+
+Patching the game binary does not help: the network poll sleep and the
+engine's lock-backoff `SwitchToThread` thunk were both patched and tested with
+no change. Most of the yields happen inside Wine, which only a preload reaches.
+
+Risk: a contended lock waits up to the configured time instead of retrying
+immediately. Not yet measured under player load. Set per server through the
+egg variable.
