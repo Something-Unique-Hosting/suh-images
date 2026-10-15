@@ -1,0 +1,47 @@
+name: Bump GE-Proton
+
+on:
+  schedule:
+    - cron: "7 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check for a new GE-Proton release
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          f=steamcmd/proton/Dockerfile
+          cur=$(sed -nE 's/^ARG GE_PROTON_VERSION=(.*)$/\1/p' "$f")
+          new=$(gh api repos/GloriousEggroll/proton-ge-custom/releases/latest -q .tag_name)
+          echo "current=$cur latest=$new"
+          if [ "$cur" = "$new" ] || [ -z "$new" ]; then exit 0; fi
+          sha=$(curl -fsSL "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/$new/$new-x86_64.sha512sum" | awk '{print $1}')
+          [ ${#sha} -eq 128 ] || { echo "no x86_64 sha512sum for $new"; exit 1; }
+          sed -i -E "s/^ARG GE_PROTON_VERSION=.*/ARG GE_PROTON_VERSION=$new/; s/^ARG GE_PROTON_SHA512=.*/ARG GE_PROTON_SHA512=$sha/" "$f"
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+
+      - name: Open PR
+        if: steps.check.outputs.new != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW: ${{ steps.check.outputs.new }}
+        run: |
+          branch="bump/$NEW"
+          git ls-remote --exit-code origin "refs/heads/$branch" >/dev/null && { echo "PR branch exists"; exit 0; }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git commit -am "steamcmd/proton: bump to $NEW"
+          git push origin "$branch"
+          gh pr create --title "steamcmd/proton: bump to $NEW" \
+            --body "Release notes: https://github.com/GloriousEggroll/proton-ge-custom/releases/tag/$NEW. Test on one Proton server (e.g. Enshrouded) after merge."
