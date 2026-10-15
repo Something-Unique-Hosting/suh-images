@@ -75,6 +75,13 @@ if [ -f "/usr/local/bin/proton" ] && [ -z "${DISPLAY}" ]; then
 	export DISPLAY=:99
 fi
 
+# SUH: optional yield shim. SUH_YIELD_SLEEP_US=<microseconds> turns sched_yield
+# into a short sleep, which cuts Enshrouded's idle CPU under Wine. Unset or 0 = off.
+if [ -n "${SUH_YIELD_SLEEP_US}" ] && [ "${SUH_YIELD_SLEEP_US}" != "0" ]; then
+	export LD_PRELOAD="/usr/local/lib/suh/yieldshim.so${LD_PRELOAD:+:${LD_PRELOAD}}"
+	echo "SUH: yield shim enabled (${SUH_YIELD_SLEEP_US} us)"
+fi
+
 # Replace Startup Variables
 MODIFIED_STARTUP=$(echo ${STARTUP} | sed -e 's/{{/${/g' -e 's/}}/}/g')
 echo -e ":/home/container$ ${MODIFIED_STARTUP}"
