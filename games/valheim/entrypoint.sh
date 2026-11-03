@@ -38,6 +38,24 @@ envsubst < /passwd.template > ${NSS_WRAPPER_PASSWD}
 
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libnss_wrapper.so
 
+# BepInEx (installed by the panel's Mods tab) needs Unity Doorstop preloaded
+# into the game process. Applied only to the exec'd game command via `env`,
+# so the helper processes below (tee, date, ...) never load the hook. Off
+# with BEPINEX=0, which boots vanilla without touching the mod files. The
+# doorstop paths are prepended to the egg's LD_LIBRARY_PATH (./linux64) and
+# to the nss_wrapper preload above, never replacing them.
+BEPINEX_EXEC=""
+if [ -f "BepInEx/core/BepInEx.Preloader.dll" ] && [ -f "doorstop_libs/libdoorstop_x64.so" ]; then
+    if [ "${BEPINEX:-1}" != "0" ]; then
+        BEPINEX_EXEC="env DOORSTOP_ENABLED=1 DOORSTOP_TARGET_ASSEMBLY=./BepInEx/core/BepInEx.Preloader.dll LD_LIBRARY_PATH=./doorstop_libs:${LD_LIBRARY_PATH:-./linux64} LD_PRELOAD=libdoorstop_x64.so:${LD_PRELOAD}"
+        echo "BepInEx: enabled (doorstop preloaded)"
+    else
+        echo "BepInEx: installed but disabled (BEPINEX=0)"
+    fi
+else
+    echo "BepInEx: not installed, starting vanilla"
+fi
+
 # Replace Startup Variables
 # Replace Startup Variables
 MODIFIED_STARTUP=$(echo -e ${STARTUP} | sed -e 's/{{/${/g' -e 's/}}/}/g')
@@ -45,7 +63,7 @@ echo -e ":/home/container$ ${MODIFIED_STARTUP}"
 
 # No logfile requested: hand PID 1 straight to the game so stop signals reach it.
 if [ -z "${LOG_FILE}" ]; then
-    eval "exec ${MODIFIED_STARTUP}"
+    eval "exec ${BEPINEX_EXEC} ${MODIFIED_STARTUP}"
 fi
 
 # Logfile requested: console + file via tee, stop signal forwarded to the game.
@@ -85,7 +103,7 @@ TEE=$!
 
 trap 'kill -INT "${SPID}" 2>/dev/null' INT
 trap 'kill -TERM "${SPID}" 2>/dev/null' TERM
-eval "exec ${MODIFIED_STARTUP}" > "${FIFO}" 2>&1 &
+eval "exec ${BEPINEX_EXEC} ${MODIFIED_STARTUP}" > "${FIFO}" 2>&1 &
 SPID=$!
 
 wait "${SPID}"                      # interrupted by trap on stop
